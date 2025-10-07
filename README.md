@@ -6,7 +6,27 @@
 git clone https://github.com/nullpo0/echo.git
 ```
 ## Caution
-* 모든 작업은 main branch 이외의 branch에서 이루어져야 합니다.
+* 모든 작업은 develop branch에서 이루어져야 합니다. 기능 구현 branch도 develop branch로부터 생성되어야 합니다.
+> 현재 branch 확인
+> ```
+> git branch
+> ```
 
+> branch 생성 (ex : 앱의 그림판을 구현하는 상황)
+> ```
+> git branch app/drawingBoard
+> ```
+
+> branch 이동 (ex : develop branch로 이동)
+> ```
+> git switch develop
+> ```
+
+> merge (ex : 작업을 마친 app/drawingBoard branch를 develop branch에 병합)
+> ```
+> git switch develop
+> git pull origin develop
+> git merge app/drawingBoard
+> ```
 ## etc
 figma : https://www.figma.com/design/YRccdlsDbmDnlhocmyxYJ1/Untitled?node-id=1-3&t=MVHTdni6gB1p2DIK-1
