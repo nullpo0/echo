@@ -4,6 +4,7 @@
 ## Getting Started
 ```
 git clone https://github.com/nullpo0/echo.git
+cd echo
 ```
 ## Caution
 * 모든 작업은 develop branch에서 이루어져야 합니다. 기능 구현 branch도 develop branch로부터 생성되어야 합니다.
@@ -30,3 +31,24 @@ git clone https://github.com/nullpo0/echo.git
 > ```
 ## etc
 figma : https://www.figma.com/design/YRccdlsDbmDnlhocmyxYJ1/Untitled?node-id=1-3&t=MVHTdni6gB1p2DIK-1
+
+## init(server side)
+0. WSL2 ubuntu-24.04 기준으로 작성됨.
+
+1. docker 설치
+```
+source scripts/docker_install.sh
+```
+2. postgresql 이미지 다운로드 & 컨테이너 실행
+```
+source scripts/postgresql_install.sh
+```
+3. 가상환경 venv 구축
+```
+source scripts/venv.sh
+```
+4. DB 초기 테이블 구축
+```
+cd server
+python init_table.py
+```
