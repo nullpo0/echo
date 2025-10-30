@@ -3,7 +3,7 @@
 
 ## Getting Started
 ```
-git clone https://github.com/nullpo0/echo.git
+git clone -b develop https://github.com/nullpo0/echo.git
 cd echo
 ```
 ## Caution
