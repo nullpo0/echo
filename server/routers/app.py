@@ -11,9 +11,10 @@ router = APIRouter(
 
 @router.post("/registration")
 def registration(registration: Registration):
-    query = "INSERT INTO students (name, danger_mean) VALUES (%s, %s)"
+    query = "INSERT INTO students (name, danger_mean) VALUES (%s, %s) RETURNING s_id"
     db = get_db()
-    db.execute(query=query, params=(registration.name, 0.0,))
+    s_id = db.execute(query=query, params=(registration.name, 0.0,), fetch=True)
+    return {"s_id": s_id}
     
 
 @router.post("/upload")

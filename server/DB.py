@@ -20,6 +20,7 @@ class DB:
             cursor.execute(query, params)
             if fetch:
                 result = cursor.fetchall()
+                conn.commit()
                 return result
             else:
                 conn.commit()
