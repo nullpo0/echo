@@ -45,3 +45,43 @@ CREATE TABLE diaries(
 '''
 
 db.execute(query=query4)
+
+query5 = '''
+CREATE OR REPLACE FUNCTION update_student_danger_mean()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'INSERT' OR TG_OP = 'UPDATE') THEN
+        UPDATE students
+        SET danger_mean = (
+            SELECT AVG(danger)::FLOAT
+            FROM diaries
+            WHERE s_id = NEW.s_id
+        )
+        WHERE s_id = NEW.s_id;
+
+    ELSIF (TG_OP = 'DELETE') THEN
+        UPDATE students
+        SET danger_mean = (
+            SELECT AVG(danger)::FLOAT
+            FROM diaries
+            WHERE s_id = OLD.s_id
+        )
+        WHERE s_id = OLD.s_id;
+    END IF;
+
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+'''
+
+db.execute(query=query5)
+
+query6 = '''
+CREATE TRIGGER diaries_danger_mean_trigger
+AFTER INSERT OR UPDATE OR DELETE
+ON diaries
+FOR EACH ROW
+EXECUTE FUNCTION update_student_danger_mean();
+'''
+
+db.execute(query=query6)

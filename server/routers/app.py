@@ -1,4 +1,4 @@
-from routers import APIRouter, UploadFile, get_db, File, Form
+from routers import APIRouter, UploadFile, get_db, get_model, File, Form
 from schemas.app import Registration
 from datetime import date
 import os, shutil
@@ -24,8 +24,9 @@ async def upload_diary(
     text: str = Form(...),
     img: UploadFile = File(...)
 ):
-    query = "INSERT INTO diaries (s_id, title, date, img_path, text) VALUES (%s, %s, %s, %s, %s)"
+    query = "INSERT INTO diaries (s_id, title, date, img_path, text, danger) VALUES (%s, %s, %s, %s, %s, %s)"
     db = get_db()
+    model = get_model()
     
     img_dir = "img"
     
@@ -35,4 +36,6 @@ async def upload_diary(
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(img.file, buffer)
     
-    db.execute(query=query, params=(s_id, title, date.today(), file_path, text))
+    danger = model.predict(file_path)
+    
+    db.execute(query=query, params=(s_id, title, date.today(), file_path, text, danger))
