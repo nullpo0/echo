@@ -52,3 +52,7 @@ source scripts/venv.sh
 cd server
 python init_table.py
 ```
+## server start
+```
+source scripts/activate.sh
+```
