@@ -52,3 +52,16 @@ source scripts/venv.sh
 cd server
 python init_table.py
 ```
+## server start
+```
+source scripts/activate.sh
+```
+## clone 혹은 pull 했을때..
+- flutter
+```
+flutter pub get
+```
+- react
+```
+npm install
+```
