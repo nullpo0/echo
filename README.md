@@ -56,3 +56,12 @@ python init_table.py
 ```
 source scripts/activate.sh
 ```
+## clone 혹은 pull 했을때..
+- flutter
+```
+flutter pub get
+```
+- react
+```
+npm install
+```
