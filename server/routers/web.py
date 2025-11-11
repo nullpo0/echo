@@ -1,4 +1,4 @@
-from routers import APIRouter, get_db
+from routers import APIRouter, get_db, get_gemini
 from schemas.web import Login, Students
 
 
@@ -36,6 +36,7 @@ async def get_diaries(s_id: int):
         img_url = f"/img/{img_path.split('/')[-1]}" if img_path else None
         
         diaries.append({
+            "d_id": r[0],
             "title": r[2],
             "date": r[3],
             "img": img_url,
@@ -45,3 +46,24 @@ async def get_diaries(s_id: int):
         })
     
     return diaries
+
+@router.get("/get_analysis/{d_id}")
+async def get_analysis(d_id: int):
+    query = "SELECT * FROM diaries WHERE d_id=%s"
+    db = get_db()
+    gemini = get_gemini()
+    
+    result = db.execute(query=query, params=(d_id,), fetch=True)
+    
+    img_path = result[0][4]
+    text = result[0][5]
+    
+    prompt = f'''
+    이 그림은 아동학대 위험도 측정 모델에서 아동학대 의심 아동 그림으로 분류되었어.
+    아래 text는 이 그림을 그린 아동이 함께 작성한 일기야. 참고해서 이 그림을 분석하고 아동의 심리 상태를 분석해줘.
+    text : {text}
+    '''
+    
+    res = gemini.inference(image_path=img_path, prompt=prompt)
+    
+    return {"response": res}

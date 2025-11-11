@@ -18,4 +18,4 @@ fi
 
 cd server
 
-uvicorn main:fastapp --reload
+nohup uvicorn main:fastapp --reload > fastapi.log 2>&1 &

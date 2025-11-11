@@ -1,0 +1,8 @@
+nohup uvicorn main:app --host 0.0.0.0 --port 8000 > fastapi.log 2>&1 &
+nohup ngrok http 8000 > ngrok.log 2>&1 &
+
+ps aux | grep uvicorn
+ps aux | grep ngrok
+
+pkill -f uvicorn
+pkill -f ngrok
