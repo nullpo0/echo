@@ -965,7 +965,7 @@ class _HomeTabState extends State<HomeTab> {
             icon: _uploading
                 ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                 : const Icon(Icons.cloud_upload),
-            label: const Text('완성 & 서버 업로드'),
+            label: const Text('완성'),
           ),
         ],
       ),
