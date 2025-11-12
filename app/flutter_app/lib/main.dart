@@ -140,7 +140,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   controller: nameCtrl,
                   decoration: const InputDecoration(
                     labelText: '이름',
-                    hintText: '예: 김하늘',
+                    // hintText: '예: 김하늘',
                     border: OutlineInputBorder(),
                   ),
                   onSubmitted: (_) => _submit(),
@@ -965,7 +965,7 @@ class _HomeTabState extends State<HomeTab> {
             icon: _uploading
                 ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                 : const Icon(Icons.cloud_upload),
-            label: const Text('완성'),
+            label: const Text('완성!'),
           ),
         ],
       ),
