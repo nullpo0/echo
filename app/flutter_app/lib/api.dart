@@ -66,7 +66,7 @@ class ApiServiceDio {
 
     final elapsedMs = DateTime.now().difference(startedAt).inMilliseconds;
 
-    // 최종 결과 요약 로그
+    // 최종 결과 로그
     debugPrint('[UPLOAD_DONE] status=${res.statusCode} elapsed=${elapsedMs}ms');
     debugPrint('[UPLOAD_DONE] body=${res.data}');
 
