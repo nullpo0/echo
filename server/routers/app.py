@@ -30,8 +30,14 @@ async def upload_diary(
     
     img_dir = "img"
     
+    count = 1
     filename = f"{s_id}_{int(date.today().strftime('%Y%m%d'))}.jpg"
     file_path = os.path.join(img_dir, filename)
+    
+    while os.path.exists(file_path):
+        filename = f"{s_id}_{int(date.today().strftime('%Y%m%d'))}_{count}.jpg"
+        file_path = os.path.join(img_dir, filename)
+        count += 1
     
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(img.file, buffer)

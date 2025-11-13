@@ -7,7 +7,7 @@ load_dotenv()
 
 class Gemini:
     def __init__(self):
-        self.model_name = "gemini-2.5-flash"
+        self.model_name = "gemini-2.5-flash-lite"
         self.APIKEY = os.getenv("GEMINI_API_KEY")
         self.client = genai.Client(api_key=self.APIKEY)
         
