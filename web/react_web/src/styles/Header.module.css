@@ -1,0 +1,29 @@
+.header {
+    display: flex;
+    justify-content: space-between; /* Space out title and button */
+    align-items: center;
+    margin-bottom: 1rem;
+    padding: 0 2rem; /* Add some horizontal padding */
+}
+
+.title {
+    font-family: 'Jua', sans-serif;
+    font-size: 2.5rem;
+    color: #5D4037;
+}
+
+.studentsButton {
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    border: none;
+    background-color: #A1887F; /* Soft brown */
+    color: white;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+}
+
+.studentsButton:hover {
+    background-color: #8D6E63; /* Darker brown on hover */
+}

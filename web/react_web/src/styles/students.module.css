@@ -1,0 +1,58 @@
+.page {
+    padding: 2rem;
+}
+
+.header {
+    margin-bottom: 1rem; /* Adjusted margin */
+}
+
+.title {
+    font-family: 'Jua', sans-serif;
+    font-size: 2.5rem;
+    color: #5D4037;
+}
+
+.filters {
+    display: flex;
+    justify-content: center; /* Center the filter buttons */
+    gap: 1rem;
+    margin-bottom: 2rem; /* Add space above the student list */
+}
+
+.filterButton {
+    padding: 0.7rem 1.2rem;
+    border-radius: 20px;
+    border: none;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: white;
+    opacity: 0.6; /* 기본 비활성화 상태 */
+}
+
+.filterButton.active {
+    opacity: 1; /* 활성화 상태 */
+}
+
+.filterButton.danger {
+    background-color: #E57373; /* Red */
+}
+
+.filterButton.warning {
+    background-color: #FFB300; /* Yellow */
+}
+
+.filterButton.safe {
+    background-color: #66BB6A; /* Green */
+}
+
+.filterButton input[type="checkbox"] {
+    display: none; /* 기본 체크박스 숨기기 */
+}
+
+.studentList {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}

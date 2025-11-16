@@ -1,0 +1,60 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 15vh; /* 제목을 위로 올리기 위해 상단 패딩 조정 */
+    min-height: calc(100vh - 40px - 15vh); /* 전체 높이에서 패딩 값을 제외 */
+    box-sizing: border-box;
+}
+
+.title {
+    font-family: 'Jua', sans-serif; /* 둥근 폰트 적용 */
+    font-size: 4.5rem;
+    font-weight: bold;
+    color: #5D4037; /* 진한 갈색 */
+    text-shadow: 3px 3px 6px rgba(0,0,0,0.25);
+    margin-bottom: 3rem;
+}
+
+.loginForm {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: rgba(255, 255, 255, 0.2); /* 반투명 배경 */
+    padding: 2rem;
+    border-radius: 15px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.subtitle {
+    font-size: 1.8rem;
+    color: #4E342E; /* 더 진한 갈색 */
+    margin-bottom: 1.5rem;
+    font-weight: 500;
+}
+
+.input {
+    padding: 12px;
+    margin-bottom: 1rem;
+    border-radius: 8px;
+    border: 1px solid #BDBDBD;
+    width: 250px;
+    font-size: 1rem;
+    background-color: #FFF8E1; /* 연한 크림색 */
+}
+
+.button {
+    padding: 12px 24px;
+    border-radius: 8px;
+    border: none;
+    background-color: #A1887F; /* 부드러운 갈색 */
+    color: white;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+}
+
+.button:hover {
+    background-color: #8D6E63; /* 호버 시 더 진한 색 */
+}
