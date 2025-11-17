@@ -30,14 +30,8 @@ async def upload_diary(
     
     img_dir = "img"
     
-    count = 1
     filename = f"{s_id}_{int(date.today().strftime('%Y%m%d'))}.jpg"
     file_path = os.path.join(img_dir, filename)
-    
-    while os.path.exists(file_path):
-        filename = f"{s_id}_{int(date.today().strftime('%Y%m%d'))}_{count}.jpg"
-        file_path = os.path.join(img_dir, filename)
-        count += 1
     
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(img.file, buffer)
@@ -45,3 +39,25 @@ async def upload_diary(
     danger = model.predict(file_path)
     
     db.execute(query=query, params=(s_id, title, date.today(), file_path, text, danger))
+    
+
+@router.get("/load_diaries/{s_id}")
+async def serve_diaries(s_id: int):
+    query = "SELECT * FROM diaries WHERE s_id=%s"
+    db = get_db()
+    result = db.execute(query=query, params=(s_id,), fetch=True)
+    diaries = []
+    for r in result:
+        img_path = r[4]
+        img_url = f"/img/{img_path.split('/')[-1]}" if img_path else None
+        
+        diaries.append({
+            "d_id": r[0],
+            "title": r[2],
+            "date": r[3],
+            "img": img_url,
+            "text": r[5],
+            "comment": r[6]
+        })
+    
+    return diaries

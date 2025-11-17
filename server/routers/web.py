@@ -1,5 +1,5 @@
 from routers import APIRouter, get_db, get_gemini
-from schemas.web import Login, Students
+from schemas.web import Login, Students, Comment
 
 
 router = APIRouter(
@@ -18,7 +18,7 @@ def login(login: Login):
 
 
 @router.get("/get_stds", response_model=list[Students])
-def get_students():
+def serve_students():
     query = "SELECT * FROM students"
     db = get_db()
     result = db.execute(query=query, fetch=True)
@@ -26,7 +26,7 @@ def get_students():
 
 
 @router.get("/get_diaries/{s_id}")
-async def get_diaries(s_id: int):
+async def serve_diaries(s_id: int):
     query = "SELECT * FROM diaries WHERE s_id=%s"
     db = get_db()
     result = db.execute(query=query, params=(s_id,), fetch=True)
@@ -41,7 +41,7 @@ async def get_diaries(s_id: int):
             "date": r[3],
             "img": img_url,
             "text": r[5],
-            "coment": r[6],
+            "comment": r[6],
             "danger": r[7]
         })
     
@@ -59,11 +59,22 @@ async def get_analysis(d_id: int):
     text = result[0][5]
     
     prompt = f'''
-    이 그림은 아동학대 위험도 측정 모델에서 아동학대 의심 아동 그림으로 분류되었어.
+    **요구사항** : 이 그림은 아동학대 위험도 측정 모델에서 아동학대 의심 아동 그림으로 분류되었어.
     아래 text는 이 그림을 그린 아동이 함께 작성한 일기야. 참고해서 이 그림을 분석하고 아동의 심리 상태를 분석해줘.
-    text : {text}
+    
+    **제약조건** : 다른 사족없이 분석결과만 출력해.
+    
+    **text** : {text}
     '''
     
     res = gemini.inference(image_path=img_path, prompt=prompt)
     
     return {"response": res}
+
+
+@router.post("/comment/{d_id}")
+async def comment(comment: Comment):
+    query = "UPDATE diaries SET comment=%s WHERE d_id=%s"
+    db = get_db()
+    
+    db.execute(query=query, params=(comment.comment, comment.d_id,))

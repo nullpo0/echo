@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
 from google import genai
+from google.genai import types
 from PIL import Image
 
 load_dotenv()
@@ -17,6 +18,9 @@ class Gemini:
         content = [img, prompt]
         
         response = self.client.models.generate_content(
+            config=types.GenerateContentConfig(
+                system_instruction="너는 아동심리치료사야. 너의 역할은 아동심리치료사의 관점에서 프롬프트를 분석하는거야."
+            ),
             model=self.model_name,
             contents=content
         )

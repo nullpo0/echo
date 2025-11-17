@@ -8,3 +8,7 @@ class Students(BaseModel):
     s_id: int
     name: str
     danger_mean: float
+    
+class Comment(BaseModel):
+    d_id: int
+    comment: str
