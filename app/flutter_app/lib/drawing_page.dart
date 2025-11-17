@@ -424,49 +424,36 @@ class _DrawingPageState extends State<DrawingPage> {
           ),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 12, 8),
+              padding: const EdgeInsets.all(8),
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final maxW = constraints.maxWidth;
-                  final maxH = constraints.maxHeight;
-                  const aspect = 4 / 3;
-
-                  double w = maxW;
-                  double h = w / aspect;
-                  if (h > maxH) {
-                    h = maxH;
-                    w = h * aspect;
-                  }
-
-                  return Center(
-                    child: SizedBox(
-                      width: w,
-                      height: h,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surface,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: const [BoxShadow(blurRadius: 10, spreadRadius: -4)],
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: RepaintBoundary(
-                            key: _repaintKey,
-                            child: Listener(
-                              behavior: HitTestBehavior.translucent,
-                              onPointerDown: _startStroke,
-                              onPointerMove: _extendStroke,
-                              onPointerUp: _endStroke,
-                              onPointerCancel: (_) => _cancelStroke(),
-                              child: CustomPaint(
-                                painter: _CanvasPainter(
-                                  strokes: _strokes,
-                                  current: _current,
-                                  background: paper,
-                                  revision: _rev,
-                                ),
-                                size: Size.infinite,
+                  return SizedBox(
+                    width: constraints.maxWidth,
+                    height: constraints.maxHeight,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: const [BoxShadow(blurRadius: 10, spreadRadius: -4)],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: RepaintBoundary(
+                          key: _repaintKey,
+                          child: Listener(
+                            behavior: HitTestBehavior.translucent,
+                            onPointerDown: _startStroke,
+                            onPointerMove: _extendStroke,
+                            onPointerUp: _endStroke,
+                            onPointerCancel: (_) => _cancelStroke(),
+                            child: CustomPaint(
+                              painter: _CanvasPainter(
+                                strokes: _strokes,
+                                current: _current,
+                                background: paper,
+                                revision: _rev,
                               ),
+                              size: Size.infinite,
                             ),
                           ),
                         ),
