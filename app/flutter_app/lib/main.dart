@@ -128,7 +128,7 @@ class _RegisterPageState extends State<RegisterPage> {
       appBar: AppBar(title: const Text('학생 등록')),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520),
+          constraints: const BoxConstraints(maxWidth: 540),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -297,7 +297,7 @@ class Store {
  * 루트(큰 UI)
  * =========================================================== */
 
-enum RootTab { home, journal, profile }
+enum RootTab { home, journal}
 
 class RootScaffold extends StatefulWidget {
   const RootScaffold({super.key});
@@ -343,11 +343,6 @@ class _RootScaffoldState extends State<RootScaffold> {
     setState(() {});
   }
 
-  void _onSavedProfile(Profile p) async {
-    await Store.saveProfile(p);
-    setState(() => _profile = p);
-  }
-
   Future<void> _logoutAndReRegister() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('s_id');
@@ -355,7 +350,7 @@ class _RootScaffoldState extends State<RootScaffold> {
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const RegisterPage()),
-      (_) => false,
+          (_) => false,
     );
   }
 
@@ -374,11 +369,15 @@ class _RootScaffoldState extends State<RootScaffold> {
             bottom: false,
             child: Row(
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.asset('assets/images/logo.png', height: 36, errorBuilder: (_, __, ___) {
-                    return const Icon(Icons.image, size: 28);
-                  }),
+                // 로고 클릭 시 홈으로
+                InkWell(
+                  onTap: () => setState(() => _tab = RootTab.home),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.asset('assets/images/logo.png', height: 36, errorBuilder: (_, __, ___) {
+                      return const Icon(Icons.image, size: 28);
+                    }),
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Column(
@@ -390,6 +389,17 @@ class _RootScaffoldState extends State<RootScaffold> {
                   ],
                 ),
                 const Spacer(),
+
+                IconButton(
+                  tooltip: '내 일기장',
+                  icon: Icon(
+                      Icons.photo_album_outlined,
+                      color: _tab == RootTab.journal ? const Color(0xFF6BB7FF) : Colors.black87
+                  ),
+                  onPressed: () => setState(() => _tab = RootTab.journal),
+                ),
+                const SizedBox(width: 8),
+
                 IconButton(
                   tooltip: '다시 등록하기',
                   onPressed: _logoutAndReRegister,
@@ -402,7 +412,7 @@ class _RootScaffoldState extends State<RootScaffold> {
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 540),
+          constraints: const BoxConstraints(maxWidth: 1200),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
             child: IndexedStack(
@@ -429,21 +439,10 @@ class _RootScaffoldState extends State<RootScaffold> {
                   },
                   onGoHome: () => setState(() => _tab = RootTab.home),
                 ),
-                ProfileTab(profile: _profile, onSaved: _onSavedProfile),
               ],
             ),
           ),
         ),
-      ),
-      bottomNavigationBar: NavigationBar(
-        height: 56,
-        selectedIndex: _tab.index,
-        onDestinationSelected: (i) => setState(() => _tab = RootTab.values[i]),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: '홈'),
-          NavigationDestination(icon: Icon(Icons.photo_album_outlined), selectedIcon: Icon(Icons.photo_album), label: '내 일기장'),
-          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: '내 프로필'),
-        ],
       ),
     );
   }
@@ -717,13 +716,11 @@ class HomeTab extends StatefulWidget {
 class _HomeTabState extends State<HomeTab> {
   final titleCtrl = TextEditingController();
   final textCtrl = TextEditingController();
-  Uint8List? _tempImg;      // ● PNG 바이트
+  Uint8List? _tempImg;
   String _weather = '';
   bool _readOnly = false;
   String? _strokesJson;
-  bool _uploading = false;  // ● 업로드 진행 표시
-
-  // 도장 상태(옵션)
+  bool _uploading = false;
   bool _stamp = false;
 
   @override
@@ -797,6 +794,8 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   Future<void> _openCanvas() async {
+    if (_readOnly) return;
+
     final result = await Navigator.push<Map<String, dynamic>>(
       context,
       MaterialPageRoute(
@@ -873,123 +872,222 @@ class _HomeTabState extends State<HomeTab> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: SketchbookShell(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 상단: 날짜 + 날씨
-            Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _DateField(
-                      value: widget.selectedDate,
-                      onChanged: widget.onChangeDate,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text('날씨 :', style: TextStyle(fontWeight: FontWeight.w700)),
-                  const SizedBox(width: 6),
-                  WeatherButton(emoji: '☀️', active: _weather == '☀️', onTap: () => _setWeather('☀️')),
-                  const SizedBox(width: 8),
-                  WeatherButton(emoji: '☁️', active: _weather == '☁️', onTap: () => _setWeather('☁️')),
-                  const SizedBox(width: 8),
-                  WeatherButton(emoji: '❄️', active: _weather == '❄️', onTap: () => _setWeather('❄️')),
-                  const SizedBox(width: 8),
-                  WeatherButton(emoji: '🌧️', active: _weather == '🌧️', onTap: () => _setWeather('🌧️')),
-                ],
-              ),
-            ),
-            const SizedBox(height: 6),
-            const DashedDivider(),
-            const SizedBox(height: 8),
+    return LayoutBuilder(builder: (context, constraints) {
+      bool isWide = constraints.maxWidth > constraints.maxHeight && constraints.maxWidth > 600;
 
-            if (_readOnly) ..._buildReadOnly() else ..._buildForm(),
-          ],
-        ),
+      return SketchbookShell(
+        padding: isWide ? const EdgeInsets.fromLTRB(24, 24, 24, 24) : const EdgeInsets.fromLTRB(14, 28, 14, 16),
+        child: isWide ? _buildLandscapeLayout() : _buildPortraitLayout(),
+      );
+    });
+  }
+
+  Widget _buildPortraitLayout() {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildHeaderRow(),
+          const SizedBox(height: 6),
+          const DashedDivider(),
+          const SizedBox(height: 8),
+          if (_readOnly) ..._buildReadOnlyContent(isWide: false) else ..._buildFormContent(isWide: false),
+        ],
       ),
     );
   }
 
-  List<Widget> _buildForm() {
-    return [
-      Row(
+  Widget _buildLandscapeLayout() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          flex: 1,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _readOnly
+                    ? SketchArtFrame(imageBytes: _tempImg)
+                    : (_tempImg == null
+                    ? DottedThumbBox(onTap: _openCanvas)
+                    : GestureDetector(onTap: _openCanvas, child: SketchArtFrame(imageBytes: _tempImg))),
+              ),
+              if (_readOnly && _stamp) ...[
+                const SizedBox(height: 10),
+                Center(
+                  child: Image.asset('assets/images/stamp.png', height: 80, errorBuilder: (_, __, ___) => const SizedBox.shrink()),
+                ),
+              ]
+            ],
+          ),
+        ),
+        const SizedBox(width: 24),
+        Container(width: 2, color: Colors.black12),
+        const SizedBox(width: 24),
+        Expanded(
+          flex: 1,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildHeaderRow(),
+              const SizedBox(height: 12),
+              const DashedDivider(),
+              const SizedBox(height: 16),
+              Expanded(
+                child: _readOnly ? _buildReadOnlyRightSide() : _buildFormRightSide(),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeaderRow() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
         children: [
-          const SizedBox(width: 52, child: Text('제목', style: TextStyle(fontWeight: FontWeight.w700))),
-          const SizedBox(width: 8),
           Expanded(
-            child: TextField(
-              controller: titleCtrl,
-              onChanged: (_) => _saveDraft(),
-              decoration: _inputDeco('오늘 그림일기의 제목'),
+            child: _DateField(
+              value: widget.selectedDate,
+              onChanged: widget.onChangeDate,
             ),
           ),
+          const SizedBox(width: 8),
+          const Text('날씨 :', style: TextStyle(fontWeight: FontWeight.w700)),
+          const SizedBox(width: 6),
+          WeatherButton(emoji: '☀️', active: _weather == '☀️', onTap: () => _setWeather('☀️')),
+          const SizedBox(width: 8),
+          WeatherButton(emoji: '☁️', active: _weather == '☁️', onTap: () => _setWeather('☁️')),
+          const SizedBox(width: 8),
+          WeatherButton(emoji: '❄️', active: _weather == '❄️', onTap: () => _setWeather('❄️')),
+          const SizedBox(width: 8),
+          WeatherButton(emoji: '🌧️', active: _weather == '🌧️', onTap: () => _setWeather('🌧️')),
         ],
       ),
+    );
+  }
+
+  List<Widget> _buildFormContent({required bool isWide}) {
+    return [
+      _buildTitleInput(),
       const SizedBox(height: 10),
-      if (_tempImg == null)
-        DottedThumbBox(onTap: _openCanvas)
-      else
-        GestureDetector(onTap: _openCanvas, child: SketchArtFrame(imageBytes: _tempImg)),
+      AspectRatio(
+        aspectRatio: 4 / 3,
+        child: _tempImg == null
+            ? DottedThumbBox(onTap: _openCanvas)
+            : GestureDetector(onTap: _openCanvas, child: SketchArtFrame(imageBytes: _tempImg)),
+      ),
       const SizedBox(height: 12),
-      Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFFEF9),
-          border: Border.all(color: const Color(0xFF222222), width: 2),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        padding: const EdgeInsets.all(10),
-        child: Stack(
+      _buildTextArea(isWide: false),
+      const SizedBox(height: 12),
+      _buildSubmitButton(),
+    ];
+  }
+
+  Widget _buildFormRightSide() {
+    return Column(
+      children: [
+        _buildTitleInput(),
+        const SizedBox(height: 16),
+        Expanded(child: _buildTextArea(isWide: true)),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            Positioned.fill(child: _LinedPaperOverlay(spacing: 32, offsetTop: 26, opacity: .23)),
-            TextField(
-              controller: textCtrl,
-              onChanged: (_) => _saveDraft(),
-              maxLines: 8,
-              decoration: const InputDecoration(
-                hintText: '오늘의 이야기를 써 보세요.',
-                border: InputBorder.none,
+            FilledButton.icon(
+              onPressed: _uploading ? null : _submit,
+              icon: _uploading
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.cloud_upload),
+              label: const Text('완성!', style: TextStyle(fontWeight: FontWeight.bold)),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               ),
             ),
           ],
         ),
+      ],
+    );
+  }
+
+  Widget _buildTitleInput() {
+    return Row(
+      children: [
+        const SizedBox(width: 40, child: Text('제목', style: TextStyle(fontWeight: FontWeight.w700))),
+        const SizedBox(width: 8),
+        Expanded(
+          child: TextField(
+            controller: titleCtrl,
+            onChanged: (_) => _saveDraft(),
+            decoration: _inputDeco('오늘 그림일기의 제목'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTextArea({required bool isWide}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFEF9),
+        border: Border.all(color: const Color(0xFF222222), width: 2),
+        borderRadius: BorderRadius.circular(14),
       ),
-      const SizedBox(height: 12),
-      Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+      padding: const EdgeInsets.all(10),
+      clipBehavior: Clip.hardEdge,
+      child: Stack(
         children: [
-          FilledButton.icon(
-            onPressed: _uploading ? null : _submit,
-            icon: _uploading
-                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.cloud_upload),
-            label: const Text('완성!'),
+          Positioned.fill(child: _LinedPaperOverlay(spacing: 32, offsetTop: 26, opacity: .23)),
+          TextField(
+            controller: textCtrl,
+            onChanged: (_) => _saveDraft(),
+            expands: isWide,
+            maxLines: isWide ? null : 8,
+            textAlignVertical: TextAlignVertical.top,
+            decoration: const InputDecoration(
+              hintText: '오늘의 이야기를 써 보세요.',
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+            ),
           ),
         ],
       ),
-    ];
+    );
   }
 
-  List<Widget> _buildReadOnly() {
+  Widget _buildSubmitButton() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        FilledButton.icon(
+          onPressed: _uploading ? null : _submit,
+          icon: _uploading
+              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Icon(Icons.cloud_upload),
+          label: const Text('완성!'),
+        ),
+      ],
+    );
+  }
+
+  List<Widget> _buildReadOnlyContent({required bool isWide}) {
     return [
-      const Text('오늘의 일기', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+      Text(titleCtrl.text.isEmpty ? '제목 없음' : titleCtrl.text, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
       const SizedBox(height: 4),
-      Text('${_krDate(widget.selectedDate)} / ${_weather.isNotEmpty ? _weather : ''}',
-          style: const TextStyle(color: Colors.grey)),
-      const SizedBox(height: 6),
+      Text('${_krDate(widget.selectedDate)} / ${_weather.isNotEmpty ? _weather : ''}', style: const TextStyle(color: Colors.grey)),
+      const SizedBox(height: 10),
       if (_stamp)
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 6),
-          child: Image.asset('assets/images/stamp.png', height: 120, errorBuilder: (_, __, ___) => const SizedBox.shrink()),
+          child: Image.asset('assets/images/stamp.png', height: 100, errorBuilder: (_, __, ___) => const SizedBox.shrink()),
         ),
       SketchArtFrame(imageBytes: _tempImg),
-      const SizedBox(height: 8),
-      Text(titleCtrl.text.isEmpty ? '제목 없음' : titleCtrl.text, style: const TextStyle(fontWeight: FontWeight.w700)),
-      const SizedBox(height: 6),
-      Text(textCtrl.text, style: const TextStyle(fontSize: 15)),
-      const SizedBox(height: 12),
+      const SizedBox(height: 16),
+      Text(textCtrl.text, style: const TextStyle(fontSize: 16, height: 1.5)),
+      const SizedBox(height: 20),
       Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
@@ -1004,21 +1102,48 @@ class _HomeTabState extends State<HomeTab> {
     ];
   }
 
+  Widget _buildReadOnlyRightSide() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(titleCtrl.text.isEmpty ? '제목 없음' : titleCtrl.text, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 22)),
+        const SizedBox(height: 8),
+        Expanded(
+          child: SingleChildScrollView(
+            child: Text(textCtrl.text, style: const TextStyle(fontSize: 17, height: 1.6)),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            _PillButton(
+              label: '✏️ 수정하기',
+              color: const Color(0xFFFFE08C),
+              borderColor: const Color(0xFFD3A700),
+              onTap: () => setState(() => _readOnly = false),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   InputDecoration _inputDeco(String hint) => InputDecoration(
-        hintText: hint,
-        isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(width: 2, color: Color(0xFF222222)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(width: 2, color: Color(0xFF222222)),
-        ),
-        fillColor: const Color(0xFFFFFEF9),
-        filled: true,
-      );
+    hintText: hint,
+    isDense: true,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(width: 2, color: Color(0xFF222222)),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(width: 2, color: Color(0xFF222222)),
+    ),
+    fillColor: const Color(0xFFFFFEF9),
+    filled: true,
+  );
 }
 
 /* ===========================================================
