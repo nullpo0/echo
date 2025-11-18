@@ -72,4 +72,18 @@ class ApiServiceDio {
 
     return res.statusCode == 200;
   }
+
+  Future<List<Map<String, dynamic>>?> loadDiaries(int sId) async {
+    final res = await dio.get('/load_diaries/$sId');
+
+    debugPrint('[LOAD] status=${res.statusCode}');
+    debugPrint('[LOAD] body=${res.data}');
+
+    if (res.statusCode == 200) {
+      final List data = res.data;
+      return data.map((e) => Map<String, dynamic>.from(e)).toList();
+    }
+
+    return null;
+  }
 }
