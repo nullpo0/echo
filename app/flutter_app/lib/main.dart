@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -30,7 +31,7 @@ class MaeAriApp extends StatelessWidget {
         useMaterial3: true,
         fontFamily: 'Pretendard',
       ),
-      home: const _Bootstrap(), 
+      home: const _Bootstrap(),
       debugShowCheckedModeBanner: false,
     );
   }
@@ -1150,52 +1151,254 @@ class _HomeTabState extends State<HomeTab> {
  * 일기장(폴라로이드), 상세, 프로필
  * =========================================================== */
 
-class JournalTab extends StatelessWidget {
-  const JournalTab({super.key, required this.profile, required this.all, required this.onOpen, required this.onGoHome});
+class JournalTab extends StatefulWidget {
+  const JournalTab({
+    super.key,
+    required this.profile,
+    required this.all,
+    required this.onOpen,
+    required this.onGoHome,
+  });
+
   final Profile? profile;
   final List<DiaryEntry> all;
   final ValueChanged<DiaryEntry> onOpen;
   final VoidCallback onGoHome;
 
   @override
-  Widget build(BuildContext context) {
-    final name = (profile?.name ?? '').isEmpty ? '이름미정' : profile!.name;
-    final mine = all.where((d) => d.studentName == name).toList()..sort((a, b) => b.date.compareTo(a.date));
+  State<JournalTab> createState() => _JournalTabState();
+}
 
-    return SingleChildScrollView(
-      child: SketchbookShell(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 4),
-            const Text('내 일기장', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 10),
-            GridView.builder(
-              shrinkWrap: true,
-              primary: false,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 4 / 5,
-              ),
-              itemCount: mine.length,
-              itemBuilder: (_, i) => GestureDetector(
-                onTap: () => onOpen(mine[i]),
-                child: _PolaroidCard(entry: mine[i]),
+class _RingBinderPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    const springRadius = 7.0;
+    const springSpacing = 28.0;
+    const verticalOffset = 25.0;
+
+    final centerX = size.width / 2;
+
+    final ringColor = Colors.grey.shade700;
+    final highlightColor = Colors.grey.shade200.withOpacity(0.8);
+    final shadowColor = Colors.black.withOpacity(0.4);
+
+    final ringPaint = Paint()
+      ..color = ringColor
+      ..style = PaintingStyle.fill;
+
+    final holePaint = Paint()
+      ..color = const Color(0xFFFFFDF8)
+      ..style = PaintingStyle.fill;
+
+    final gradientRingPaint = (Rect rect) => Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [highlightColor, ringColor, Colors.grey.shade900],
+        stops: const [0.0, 0.5, 1.0],
+      ).createShader(rect);
+
+    for (double y = verticalOffset; y < size.height - verticalOffset - springRadius; y += springSpacing) {
+      canvas.drawOval(
+        Rect.fromCircle(center: Offset(centerX + 2.0, y + 2.0), radius: springRadius + 1),
+        Paint()..color = shadowColor,
+      );
+
+      final ringRect = Rect.fromCircle(center: Offset(centerX, y), radius: springRadius);
+      canvas.drawOval(ringRect, gradientRingPaint(ringRect));
+
+      canvas.drawOval(
+        Rect.fromCircle(center: Offset(centerX, y), radius: springRadius * 0.5),
+        holePaint,
+      );
+
+      canvas.drawRect(Rect.fromLTWH(centerX - springRadius, y - springRadius, springRadius, springRadius * 2), holePaint);
+      canvas.drawRect(Rect.fromLTWH(centerX, y - springRadius, springRadius, springRadius * 2), holePaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _JournalTabState extends State<JournalTab> {
+  late PageController _controller;
+  List<DiaryEntry> _myDiaries = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _prepareDiaries();
+  }
+
+  @override
+  void didUpdateWidget(covariant JournalTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.all != widget.all) {
+      _prepareDiaries();
+    }
+  }
+
+  void _prepareDiaries() {
+    final name = (widget.profile?.name ?? '').isEmpty ? '이름미정' : widget.profile!.name;
+    _myDiaries = widget.all.where((d) => d.studentName == name).toList();    _myDiaries.sort((a, b) => a.date.compareTo(b.date));
+    int initialPage = _myDiaries.isEmpty ? 0 : _myDiaries.length;
+    if (_myDiaries.isNotEmpty) initialPage = _myDiaries.length - 1;
+
+    _controller = PageController(initialPage: initialPage);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_myDiaries.isEmpty) {
+      return SketchbookShell(
+        child: Center(
+          child: _buildWriteNewPage(isEmptyCase: true),
+        ),
+      );
+    }
+
+    return SketchbookShell(
+      padding: EdgeInsets.zero,
+      child: PageView.builder(
+        controller: _controller,
+        itemCount: _myDiaries.length + 1,
+        itemBuilder: (context, index) {
+          if (index == _myDiaries.length) {
+            return _buildWriteNewPage();
+          }
+          return _buildBookSpread(_myDiaries[index]);
+        },
+      ),
+    );
+  }
+
+  Widget _buildBookSpread(DiaryEntry entry) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            flex: 1,
+            child: Stack(
+              children: [
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          border: Border.all(color: Colors.grey.shade400),
+                          boxShadow: [
+                            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(2, 2))
+                          ],
+                        ),
+                        padding: const EdgeInsets.all(8),
+                        child: entry.imageBytes != null
+                            ? Image.memory(entry.imageBytes!, fit: BoxFit.contain)
+                            : const Center(child: Text('그림 없음', style: TextStyle(color: Colors.grey))),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(entry.date, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                  ],
+                ),
+                if (entry.stamp)
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: Transform.rotate(
+                      angle: -0.2,
+                      child: Image.asset('assets/images/stamp.png', width: 100, errorBuilder: (_, __, ___) => const SizedBox()),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          // 2. [중앙] 스프링 다이어리 효과
+          SizedBox(
+            width: 40,
+            child: CustomPaint(
+              painter: _RingBinderPainter(),
+            ),
+          ),
+
+          // 3. [오른쪽 페이지] 날짜, 날씨, 제목, 내용
+          Expanded(
+            flex: 1,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                    decoration: BoxDecoration(
+                      border: Border(bottom: BorderSide(color: Colors.grey.shade300, width: 1)),
+                    ),
+                    child: Row(
+                      children: [
+                        Text(_krDate(entry.date), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        const Spacer(),
+                        Text(entry.weather, style: const TextStyle(fontSize: 24)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 제목
+                  Text(entry.title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 12),
+
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Text(
+                        entry.text,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          height: 1.6,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 12),
-            Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-              _PillButton(
-                label: '🖍️ 그림일기 쓰기',
-                color: const Color(0xFFFFE08C),
-                borderColor: const Color(0xFFD3A700),
-                onTap: onGoHome,
-              ),
-            ]),
-          ],
-        ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 마지막 페이지: 새 일기 쓰기 안내
+  Widget _buildWriteNewPage({bool isEmptyCase = false}) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.edit_note, size: 80, color: Colors.orange.shade200),
+          const SizedBox(height: 20),
+          Text(
+            isEmptyCase ? '아직 쓴 일기가 없어요!' : '마지막 페이지입니다.',
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black54),
+          ),
+          const SizedBox(height: 10),
+          const Text('오늘 있었던 일을 그림일기로 남겨볼까요?', style: TextStyle(color: Colors.black45)),
+          const SizedBox(height: 24),
+          FilledButton.icon(
+            onPressed: widget.onGoHome,
+            icon: const Icon(Icons.create),
+            label: const Text('새 일기 쓰러 가기'),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              textStyle: const TextStyle(fontSize: 18),
+            ),
+          ),
+        ],
       ),
     );
   }
