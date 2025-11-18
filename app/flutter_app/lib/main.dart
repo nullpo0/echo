@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';          
 import 'dart:typed_data';
 import 'dart:ui' as ui;
+import 'dart:math' as math;
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -67,7 +68,6 @@ class _BootstrapState extends State<_Bootstrap> {
       );
     }
   }
-
   @override
   Widget build(BuildContext context) {
     return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -415,7 +415,7 @@ class _RootScaffoldState extends State<RootScaffold> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1200),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
             child: IndexedStack(
               index: _tab.index,
               children: [
@@ -429,16 +429,13 @@ class _RootScaffoldState extends State<RootScaffold> {
                 JournalTab(
                   profile: _profile,
                   all: _all,
-                  onOpen: (e) async {
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ViewDiaryPage(entry: e, onDelete: _onDeletedDiary),
-                      ),
-                    );
-                    setState(() {});
-                  },
                   onGoHome: () => setState(() => _tab = RootTab.home),
+                  onChangeDate: (date) {
+                    setState(() {
+                      _selectedDate = date;
+                      _tab = RootTab.home;
+                    });
+                  },
                 ),
               ],
             ),
@@ -1156,17 +1153,427 @@ class JournalTab extends StatefulWidget {
     super.key,
     required this.profile,
     required this.all,
-    required this.onOpen,
     required this.onGoHome,
+    required this.onChangeDate,
   });
 
   final Profile? profile;
   final List<DiaryEntry> all;
-  final ValueChanged<DiaryEntry> onOpen;
   final VoidCallback onGoHome;
+  final ValueChanged<String> onChangeDate;
 
   @override
   State<JournalTab> createState() => _JournalTabState();
+}
+
+class _CalendarDayCell extends StatelessWidget {
+  const _CalendarDayCell({
+    required this.day,
+    required this.entry,
+    required this.onTap,
+    required this.isToday,
+  });
+
+  final int day;
+  final DiaryEntry? entry;
+  final VoidCallback onTap;
+  final bool isToday;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      customBorder: const CircleBorder(),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          CustomPaint(
+            size: const Size(double.infinity, double.infinity),
+            painter: _DottedCirclePainter(hasEntry: entry != null, isToday: isToday),
+          ),
+
+          if (entry != null) ...[
+            ClipOval(
+              child: entry!.imageBytes != null
+                  ? Image.memory(entry!.imageBytes!,
+                  fit: BoxFit.cover,
+                  width: 44, height: 44)
+                  : Text(entry!.weather, style: const TextStyle(fontSize: 28)),
+            ),
+          ] else ...[
+            Text('$day', style: TextStyle(
+                color: isToday ? const Color(0xFF6BB7FF) : Colors.black54,
+                fontWeight: isToday ? FontWeight.w900 : FontWeight.w500)
+            ),
+          ],
+
+          if (entry != null)
+            Positioned(
+              bottom: 2,
+              child: Text('$day', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+            ),
+
+          if (isToday)
+            Positioned(
+              top: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6BB7FF),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text('오늘', style: TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DottedCirclePainter extends CustomPainter {
+  _DottedCirclePainter({required this.hasEntry, required this.isToday});
+  final bool hasEntry;
+  final bool isToday;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final color = isToday
+        ? const Color(0xFF6BB7FF)
+        : (hasEntry ? const Color(0xFFFFE08C) : Colors.grey.shade300);
+
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = isToday ? 2.5 : 2
+      ..style = hasEntry ? PaintingStyle.fill : PaintingStyle.stroke;
+
+    final center = Offset(size.width / 2, size.height / 2);
+
+    final minDimension = math.min(size.width, size.height);
+    final radius = (minDimension / 2) * 0.8;
+
+    if (hasEntry) {
+      canvas.drawCircle(center, radius, paint);
+      if (isToday) {
+        final borderPaint = Paint()
+          ..color = const Color(0xFF6BB7FF)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.5;
+        canvas.drawCircle(center, radius, borderPaint);
+      }
+    } else {
+      _drawDashedCircle(canvas, center, radius, paint);
+    }
+  }
+
+  void _drawDashedCircle(Canvas canvas, Offset center, double radius, Paint paint) {
+    const double dashWidth = 4;
+    const double dashSpace = 4;
+    double startAngle = 0;
+    final circumference = 2 * math.pi * radius;
+    final dashCount = (circumference / (dashWidth + dashSpace)).floor();
+    final angleStep = (2 * math.pi) / dashCount;
+
+    for (int i = 0; i < dashCount; i++) {
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle,
+        angleStep * (dashWidth / (dashWidth + dashSpace)),
+        false,
+        paint,
+      );
+      startAngle += angleStep;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _JournalTabState extends State<JournalTab> {
+  DateTime _focusedDay = DateTime.now();
+
+  @override
+  Widget build(BuildContext context) {
+    return SketchbookShell(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+            child: Row(
+              children: [
+                const SizedBox(width: 8),
+                Text(
+                  '${_focusedDay.year}년 ${_focusedDay.month}월',
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Pretendard'),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.chevron_left),
+                  onPressed: () => setState(() {
+                    _focusedDay = DateTime(_focusedDay.year, _focusedDay.month - 1, 1);
+                  }),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.chevron_right),
+                  onPressed: () => setState(() {
+                    _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + 1, 1);
+                  }),
+                ),
+              ],
+            ),
+          ),
+
+          const DashedDivider(),
+          const SizedBox(height: 20),
+
+          Expanded(
+            child: _buildCalendarGrid(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCalendarGrid() {
+    final firstDayOfMonth = DateTime(_focusedDay.year, _focusedDay.month, 1);
+    final lastDayOfMonth = DateTime(_focusedDay.year, _focusedDay.month + 1, 0);
+
+    int firstWeekday = firstDayOfMonth.weekday % 7;
+    int daysInMonth = lastDayOfMonth.day;
+    int totalCells = firstWeekday + daysInMonth;
+
+    int totalRows = (totalCells / 7).ceil();
+
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: const ['일', '월', '화', '수', '목', '금', '토']
+              .map((e) => Expanded(
+            child: Center(
+              child: Text(e, style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+            ),
+          ))
+              .toList(),
+        ),
+        const SizedBox(height: 10),
+
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final width = constraints.maxWidth;
+              final height = constraints.maxHeight;
+
+              const double spacing = 18;
+
+              final cellWidth = (width - (spacing * 6)) / 7;
+              final cellHeight = (height - (spacing * (totalRows - 1))) / totalRows;
+              final ratio = cellWidth / cellHeight;
+
+              return GridView.builder(
+                physics: const NeverScrollableScrollPhysics(),
+                padding: EdgeInsets.zero,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 7,
+                  mainAxisSpacing: spacing,
+                  crossAxisSpacing: spacing,
+                  childAspectRatio: ratio,
+                ),
+                itemCount: totalCells,
+                itemBuilder: (context, index) {
+                  if (index < firstWeekday) return const SizedBox();
+
+                  final day = index - firstWeekday + 1;
+
+                  final currentDayDate = DateTime(_focusedDay.year, _focusedDay.month, day);
+                  final dateStr = DateFormat('yyyy-MM-dd').format(currentDayDate);
+                  final entry = _findEntry(dateStr);
+
+                  final now = DateTime.now();
+                  final isToday = now.year == currentDayDate.year &&
+                      now.month == currentDayDate.month &&
+                      now.day == currentDayDate.day;
+
+                  return _CalendarDayCell(
+                    day: day,
+                    entry: entry,
+                    isToday: isToday,
+                    onTap: () {
+                      if (entry != null) {
+                        _openBookView(entry);
+                      } else {
+                        widget.onChangeDate(dateStr);
+                        widget.onGoHome();
+                      }
+                    },
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  DiaryEntry? _findEntry(String dateStr) {
+    final name = (widget.profile?.name ?? '').isEmpty ? '이름미정' : widget.profile!.name;
+    try {
+      return widget.all.firstWhere(
+            (e) => e.studentName == name && e.date == dateStr,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  void _openBookView(DiaryEntry entry) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _BookPageView(
+          initialEntry: entry,
+          allEntries: widget.all,
+          profile: widget.profile,
+        ),
+      ),
+    );
+  }
+}
+
+class _BookPageView extends StatefulWidget {
+  const _BookPageView({required this.initialEntry, required this.allEntries, required this.profile});
+  final DiaryEntry initialEntry;
+  final List<DiaryEntry> allEntries;
+  final Profile? profile;
+
+  @override
+  State<_BookPageView> createState() => _BookPageViewState();
+}
+
+class _BookPageViewState extends State<_BookPageView> {
+  late PageController _controller;
+  List<DiaryEntry> _myDiaries = [];
+
+  @override
+  void initState() {
+    super.initState();
+    final name = (widget.profile?.name ?? '').isEmpty ? '이름미정' : widget.profile!.name;
+    _myDiaries = widget.allEntries.where((d) => d.studentName == name).toList();
+    _myDiaries.sort((a, b) => a.date.compareTo(b.date));
+
+    int initialIndex = _myDiaries.indexWhere((e) => e.date == widget.initialEntry.date);
+    if (initialIndex < 0) initialIndex = 0;
+
+    _controller = PageController(initialPage: initialIndex);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('일기장 읽기'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      extendBodyBehindAppBar: true,
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1200),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: SketchbookShell(
+              padding: EdgeInsets.zero,
+              child: PageView.builder(
+                controller: _controller,
+                itemCount: _myDiaries.length,
+                itemBuilder: (context, index) {
+                  return _buildBookSpread(_myDiaries[index]);
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBookSpread(DiaryEntry entry) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            flex: 1,
+            child: Stack(
+              children: [
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                        color: Colors.white,
+                          border: Border.all(color: Colors.grey.shade400)
+                        ),
+                        padding: const EdgeInsets.all(8),
+                        child: entry.imageBytes != null
+                            ? Image.memory(entry.imageBytes!, fit: BoxFit.contain)
+                            : const Center(child: Text('그림 없음')),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(entry.date, style: const TextStyle(color: Colors.grey)),
+                  ],
+                ),
+                if (entry.stamp)
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                     child: Image.asset('assets/images/stamp.png', width: 80)
+                  ),
+              ],
+            ),
+          ),
+
+          SizedBox(
+            width: 40,
+            child: CustomPaint(
+              painter: _RingBinderPainter()
+            )
+          ),
+
+          Expanded(
+            flex: 1,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(entry.title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Text(
+                        entry.text,
+                        style: const TextStyle(
+                          fontSize: 16,
+                           height: 1.6
+                           )
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _RingBinderPainter extends CustomPainter {
@@ -1190,13 +1597,15 @@ class _RingBinderPainter extends CustomPainter {
       ..color = const Color(0xFFFFFDF8)
       ..style = PaintingStyle.fill;
 
-    final gradientRingPaint = (Rect rect) => Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [highlightColor, ringColor, Colors.grey.shade900],
-        stops: const [0.0, 0.5, 1.0],
-      ).createShader(rect);
+    Paint gradientRingPaint(Rect rect) {
+      return Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [highlightColor, ringColor, Colors.grey.shade900],
+          stops: const [0.0, 0.5, 1.0],
+        ).createShader(rect);
+    }
 
     for (double y = verticalOffset; y < size.height - verticalOffset - springRadius; y += springSpacing) {
       canvas.drawOval(
@@ -1219,189 +1628,6 @@ class _RingBinderPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _JournalTabState extends State<JournalTab> {
-  late PageController _controller;
-  List<DiaryEntry> _myDiaries = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _prepareDiaries();
-  }
-
-  @override
-  void didUpdateWidget(covariant JournalTab oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.all != widget.all) {
-      _prepareDiaries();
-    }
-  }
-
-  void _prepareDiaries() {
-    final name = (widget.profile?.name ?? '').isEmpty ? '이름미정' : widget.profile!.name;
-    _myDiaries = widget.all.where((d) => d.studentName == name).toList();    _myDiaries.sort((a, b) => a.date.compareTo(b.date));
-    int initialPage = _myDiaries.isEmpty ? 0 : _myDiaries.length;
-    if (_myDiaries.isNotEmpty) initialPage = _myDiaries.length - 1;
-
-    _controller = PageController(initialPage: initialPage);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_myDiaries.isEmpty) {
-      return SketchbookShell(
-        child: Center(
-          child: _buildWriteNewPage(isEmptyCase: true),
-        ),
-      );
-    }
-
-    return SketchbookShell(
-      padding: EdgeInsets.zero,
-      child: PageView.builder(
-        controller: _controller,
-        itemCount: _myDiaries.length + 1,
-        itemBuilder: (context, index) {
-          if (index == _myDiaries.length) {
-            return _buildWriteNewPage();
-          }
-          return _buildBookSpread(_myDiaries[index]);
-        },
-      ),
-    );
-  }
-
-  Widget _buildBookSpread(DiaryEntry entry) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            flex: 1,
-            child: Stack(
-              children: [
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          border: Border.all(color: Colors.grey.shade400),
-                          boxShadow: [
-                            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(2, 2))
-                          ],
-                        ),
-                        padding: const EdgeInsets.all(8),
-                        child: entry.imageBytes != null
-                            ? Image.memory(entry.imageBytes!, fit: BoxFit.contain)
-                            : const Center(child: Text('그림 없음', style: TextStyle(color: Colors.grey))),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(entry.date, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                  ],
-                ),
-                if (entry.stamp)
-                  Positioned(
-                    top: 10,
-                    right: 10,
-                    child: Transform.rotate(
-                      angle: -0.2,
-                      child: Image.asset('assets/images/stamp.png', width: 100, errorBuilder: (_, __, ___) => const SizedBox()),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-
-          // 2. [중앙] 스프링 다이어리 효과
-          SizedBox(
-            width: 40,
-            child: CustomPaint(
-              painter: _RingBinderPainter(),
-            ),
-          ),
-
-          // 3. [오른쪽 페이지] 날짜, 날씨, 제목, 내용
-          Expanded(
-            flex: 1,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                    decoration: BoxDecoration(
-                      border: Border(bottom: BorderSide(color: Colors.grey.shade300, width: 1)),
-                    ),
-                    child: Row(
-                      children: [
-                        Text(_krDate(entry.date), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                        const Spacer(),
-                        Text(entry.weather, style: const TextStyle(fontSize: 24)),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // 제목
-                  Text(entry.title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: Text(
-                        entry.text,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          height: 1.6,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 마지막 페이지: 새 일기 쓰기 안내
-  Widget _buildWriteNewPage({bool isEmptyCase = false}) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.edit_note, size: 80, color: Colors.orange.shade200),
-          const SizedBox(height: 20),
-          Text(
-            isEmptyCase ? '아직 쓴 일기가 없어요!' : '마지막 페이지입니다.',
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black54),
-          ),
-          const SizedBox(height: 10),
-          const Text('오늘 있었던 일을 그림일기로 남겨볼까요?', style: TextStyle(color: Colors.black45)),
-          const SizedBox(height: 24),
-          FilledButton.icon(
-            onPressed: widget.onGoHome,
-            icon: const Icon(Icons.create),
-            label: const Text('새 일기 쓰러 가기'),
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              textStyle: const TextStyle(fontSize: 18),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _PolaroidCard extends StatelessWidget {
