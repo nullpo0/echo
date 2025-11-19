@@ -24,7 +24,6 @@ async def upload_diary(
     text: str = Form(...),
     img: UploadFile = File(...)
 ):
-    query = "INSERT INTO diaries (s_id, title, date, img_path, text, danger) VALUES (%s, %s, %s, %s, %s, %s)"
     db = get_db()
     model = get_model()
     
@@ -33,12 +32,22 @@ async def upload_diary(
     filename = f"{s_id}_{int(date.today().strftime('%Y%m%d'))}.jpg"
     file_path = os.path.join(img_dir, filename)
     
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(img.file, buffer)
+    if os.path.isfile(file_path):
+        query = "UPDATE diaries SET title=%s, text=%s, danger=%s WHERE img_path=%s"
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(img.file, buffer)
     
-    danger = model.predict(file_path)
+        danger = model.predict(file_path)
+        db.execute(query=query, params=(title, text, danger, file_path,))
+    else:
+        query = "INSERT INTO diaries (s_id, title, date, img_path, text, danger) VALUES (%s, %s, %s, %s, %s, %s)"
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(img.file, buffer)
+        
+        danger = model.predict(file_path)
+        db.execute(query=query, params=(s_id, title, date.today(), file_path, text, danger,))
+        
     
-    db.execute(query=query, params=(s_id, title, date.today(), file_path, text, danger))
     
 
 @router.get("/load_diaries/{s_id}")
