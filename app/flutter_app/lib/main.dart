@@ -129,6 +129,7 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(title: const Text('학생 등록')),
       body: Center(
         child: ConstrainedBox(
@@ -482,104 +483,128 @@ class _RootScaffoldState extends State<RootScaffold> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(60),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: const BoxDecoration(
-            color: Colors.white70,
-            border:
-                Border(bottom: BorderSide(color: Color(0xFFFFE08C), width: 2)),
-          ),
-          child: SafeArea(
-            bottom: false,
-            child: Row(
-              children: [
-                InkWell(
-                  onTap: () => setState(() => _tab = RootTab.home),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.asset('assets/images/logo.png',
-                        height: 36, errorBuilder: (_, __, ___) {
+Widget build(BuildContext context) {
+  // ✅ 화면/상단 패딩/앱바 높이 계산
+  final double screenHeight = MediaQuery.of(context).size.height;
+  final double paddingTop = MediaQuery.of(context).padding.top;
+  final double appBarHeight = 60;
+  final double bodyHeight = screenHeight - paddingTop - appBarHeight;
+
+  return Scaffold(
+    resizeToAvoidBottomInset: true, // ✅ 키보드에 맞춰 body 리사이즈
+    appBar: PreferredSize(
+      preferredSize: Size.fromHeight(appBarHeight),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: const BoxDecoration(
+          color: Colors.white70,
+          border: Border(bottom: BorderSide(color: Color(0xFFFFE08C), width: 2)),
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: Row(
+            children: [
+              InkWell(
+                onTap: () => setState(() => _tab = RootTab.home),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    height: 36,
+                    errorBuilder: (_, __, ___) {
                       return const Icon(Icons.image, size: 28);
-                    }),
+                    },
                   ),
                 ),
-                const SizedBox(width: 10),
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text('매아리',
-                        style: TextStyle(
-                            color: Color(0xFF6BB7FF),
-                            fontWeight: FontWeight.w700)),
-                    Text('매일 아이 이해하기',
-                        style: TextStyle(
-                            color: Color(0xFF7DCFB6), fontSize: 12)),
-                  ],
+              ),
+              const SizedBox(width: 10),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text(
+                    '매아리',
+                    style: TextStyle(
+                      color: Color(0xFF6BB7FF),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    '매일 아이 이해하기',
+                    style: TextStyle(
+                      color: Color(0xFF7DCFB6),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              IconButton(
+                tooltip: '내 일기장',
+                icon: Icon(
+                  Icons.photo_album_outlined,
+                  color: _tab == RootTab.journal
+                      ? const Color(0xFF6BB7FF)
+                      : Colors.black87,
                 ),
-                const Spacer(),
-                IconButton(
-                  tooltip: '내 일기장',
-                  icon: Icon(Icons.photo_album_outlined,
-                      color: _tab == RootTab.journal
-                          ? const Color(0xFF6BB7FF)
-                          : Colors.black87),
-                  onPressed: () => setState(() => _tab = RootTab.journal),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  tooltip: '다시 등록하기',
-                  onPressed: _logoutAndReRegister,
-                  icon: const Icon(Icons.logout),
-                ),
-              ],
+                onPressed: () => setState(() => _tab = RootTab.journal),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                tooltip: '다시 등록하기',
+                onPressed: _logoutAndReRegister,
+                icon: const Icon(Icons.logout),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+    body: SingleChildScrollView(        // ✅ 전체를 스크롤 가능하게
+      child: SizedBox(
+        height: bodyHeight,             // ✅ 키보드 제외한 높이만큼 사용
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1200),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+              child: IndexedStack(
+                index: _tab.index,
+                children: [
+                  HomeTab(
+                    profile: _profile,
+                    all: _all,
+                    selectedDate: _selectedDate,
+                    onChangeDate: (d) {
+                      setState(() {
+                        _selectedDate = d;
+                      });
+                      _loadAll(); // 날짜 바뀔 때도 최신 데이터
+                    },
+                    onSaved: _onSavedDiary,
+                  ),
+                  JournalTab(
+                    profile: _profile,
+                    all: _all,
+                    onGoHome: () => setState(() => _tab = RootTab.home),
+                    onChangeDate: (date) {
+                      setState(() {
+                        _selectedDate = date;
+                        _tab = RootTab.home;
+                      });
+                      _loadAll(); // 달력 클릭 시 서버에서 최신 일기 다시 가져오기
+                    },
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1200),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-            child: IndexedStack(
-              index: _tab.index,
-              children: [
-                HomeTab(
-                  profile: _profile,
-                  all: _all,
-                  selectedDate: _selectedDate,
-                  onChangeDate: (d) {
-                    setState(() {
-                      _selectedDate = d;
-                    });
-                    _loadAll(); // 날짜 바뀔 때도 최신 데이터
-                  },
-                  onSaved: _onSavedDiary,
-                ),
-                JournalTab(
-                  profile: _profile,
-                  all: _all,
-                  onGoHome: () => setState(() => _tab = RootTab.home),
-                  onChangeDate: (date) {
-                    setState(() {
-                      _selectedDate = date;
-                      _tab = RootTab.home;
-                    });
-                    _loadAll(); // 달력 클릭 시 서버에서 최신 일기 다시 가져오기
-                  },
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+    ),
+  );
+}
+
 }
 
 /* ===========================================================
