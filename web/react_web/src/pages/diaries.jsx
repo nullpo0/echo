@@ -112,8 +112,23 @@ const Diaries = () => {
           <Calendar
             onChange={handleDateChange}
             value={selectedDate}
-            locale="ko-KR"
+            locale="en-US"
+            tileClassName={({ date, view }) => {
+              if (view !== 'month') return null;
+
+              const diary = diaries.find(
+                d => d.date.toDateString() === date.toDateString()
+              );
+
+              if (!diary) return null;
+
+              if (diary.danger >= 80) return styles.dangerDay;
+              if (diary.danger >= 50) return styles.warningDay;
+              return styles.safeDay;
+            }}
           />
+
+
         </div>
         <DiaryStudentInfo s_id={s_id} initialName={initialName} initialDangerMean={initialDangerMean} />
         <div className={styles.graphContainer}>

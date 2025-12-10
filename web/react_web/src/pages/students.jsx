@@ -36,14 +36,33 @@ const Students = () => {
   };
 
   const filteredStudents = useMemo(() => {
-    return students.filter(student => {
+    const filtered = students.filter(student => {
       const { danger_mean } = student;
       if (danger_mean >= 80 && filters.danger) return true;
       if (danger_mean >= 50 && danger_mean < 80 && filters.warning) return true;
       if (danger_mean < 50 && filters.safe) return true;
       return false;
     });
+
+    // 여기서 정렬
+    return filtered.sort((a, b) => {
+      const getStatusRank = (value) => {
+        if (value >= 80) return 0;   // 위험
+        if (value >= 50) return 1;   // 주의
+        return 2;                   // 정상
+      };
+
+      const rankA = getStatusRank(a.danger_mean);
+      const rankB = getStatusRank(b.danger_mean);
+
+      // 상태 먼저 정렬
+      if (rankA !== rankB) return rankA - rankB;
+
+      // 같은 상태면 이름 가나다순
+      return a.name.localeCompare(b.name, 'ko');
+    });
   }, [students, filters]);
+
 
   return (
     <div className={styles.page}>

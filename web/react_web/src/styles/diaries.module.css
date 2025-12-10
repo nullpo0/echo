@@ -211,20 +211,38 @@
 }
 
 .calendarContainer .react-calendar__tile--now {
-    background: #FFF8E1;
-    border-radius: 8px;
+    background: #f3ede7; 
+    box-shadow: inset 0 0 0 1.5px #c1a79a; 
+    border-radius: 0px;
 }
 
-.calendarContainer .react-calendar__tile--active {
-    background: #A1887F;
-    color: white;
-    border-radius: 8px;
+/* 선택된 날짜 - 정상 */
+.safeDay:global(.react-calendar__tile--active) {
+  background: #bfe5c4 !important;
+  color: #1b5e20 !important;
+  font-weight: bold;
 }
 
-.calendarContainer .react-calendar__tile--active:enabled:hover,
-.calendarContainer .react-calendar__tile--active:enabled:focus {
-    background: #8D6E63;
+/* 선택된 날짜 - 주의 */
+.warningDay:global(.react-calendar__tile--active) {
+  background: #ffe08a !important;
+  color: #5a3e00 !important;
+  font-weight: bold;
 }
+
+/* 선택된 날짜 - 위험 */
+.dangerDay:global(.react-calendar__tile--active) {
+  background: #ffb3b3 !important;
+  color: #8b0000 !important;
+  font-weight: bold;
+}
+
+
+.calendarContainer .react-calendar__tile:enabled:hover,
+.calendarContainer .react-calendar__tile:enabled:focus {
+    background-color: #f3ede7;
+}
+
 
 .calendarContainer .react-calendar__tile:enabled:hover,
 .calendarContainer .react-calendar__tile:enabled:focus {
@@ -252,4 +270,31 @@
 .calendarContainer .react-calendar__navigation button:enabled:focus {
     background-color: #EFEBE9;
     border-radius: 5px;
+}
+
+/* 기본 타일 중앙 정렬 */
+:global(.react-calendar__tile) {
+  border-radius: 0px;
+  padding: 10px 0;
+  transition: all 0.2s ease;
+}
+
+/* 정상 (초록) */
+.safeDay {
+  background: #e6f7e6 !important;
+  /*#81C784*/
+}
+
+/* 주의 (노랑) */
+.warningDay {
+  background: #fff3c4 !important;
+  /*#FFD54F*/
+}
+
+/* 위험 (빨강) */
+.dangerDay {
+  background: #ffd6d6 !important;
+  font-weight: bold;
+  color: #b30000;
+  /*#E57373 */
 }
