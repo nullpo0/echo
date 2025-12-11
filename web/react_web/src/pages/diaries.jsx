@@ -191,20 +191,14 @@ const Diaries = () => {
               </div>
             )}
             <div className={styles.commentSection}>
-              {selectedDiary.comment === null ? (
-                <>
-                  <input
-                    type="text"
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    placeholder="코멘트를 입력하세요..."
-                    className={styles.commentInput}
-                  />
-                  <button className={styles.commentButton} onClick={handleSaveComment}>저장</button>
-                </>
-              ) : (
-                <p className={styles.diaryText}>{selectedDiary.comment}</p>
-              )}
+              <input
+                type="text"
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="코멘트를 입력하세요..."
+                className={styles.commentInput}
+              />
+              <button className={styles.commentButton} onClick={handleSaveComment}>저장</button>
             </div>
           </div>
         ) : (
