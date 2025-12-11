@@ -107,7 +107,7 @@ const Diaries = () => {
     if (!selectedDiary) return;
 
     try {
-      await callAPI('/comment', 'POST', { d_id: selectedDiary.d_id, comment });
+      await callAPI(`/comment/${selectedDiary.d_id}`, 'POST', { d_id: selectedDiary.d_id, comment });
     } catch (error) {
       console.error('Failed to save comment:', error);
     }
