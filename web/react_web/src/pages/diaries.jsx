@@ -103,6 +103,16 @@ const Diaries = () => {
     }
   };
 
+  const handleSaveComment = async () => {
+    if (!selectedDiary) return;
+
+    try {
+      await callAPI('/comment', 'POST', { d_id: selectedDiary.d_id, comment });
+    } catch (error) {
+      console.error('Failed to save comment:', error);
+    }
+  };
+
   return (
     <div className={styles.pageContainer}>
       <Header />
@@ -188,7 +198,7 @@ const Diaries = () => {
                 placeholder="코멘트를 입력하세요..."
                 className={styles.commentInput}
               />
-              <button className={styles.commentButton}>저장</button>
+              <button className={styles.commentButton} onClick={handleSaveComment}>저장</button>
             </div>
           </div>
         ) : (
