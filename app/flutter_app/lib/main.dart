@@ -43,18 +43,41 @@ class _Bootstrap extends StatefulWidget {
   State<_Bootstrap> createState() => _BootstrapState();
 }
 
-class _BootstrapState extends State<_Bootstrap> {
+class _BootstrapState extends State<_Bootstrap> with SingleTickerProviderStateMixin {
+  late final AnimationController _ac;
+
   @override
   void initState() {
     super.initState();
+
+    _ac = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 650),
+    )..forward();
+
     _route();
   }
 
+  @override
+  void dispose() {
+    _ac.dispose();
+    super.dispose();
+  }
+
   Future<void> _route() async {
+    final start = DateTime.now();
+
     final prefs = await SharedPreferences.getInstance();
     final sId = prefs.getInt('s_id');
     final name = prefs.getString('name');
-    await Future<void>.delayed(const Duration(milliseconds: 120));
+
+    // 시간 설정
+    const minSplash = Duration(milliseconds: 1200);
+    final elapsed = DateTime.now().difference(start);
+    if (elapsed < minSplash) {
+      await Future<void>.delayed(minSplash - elapsed);
+    }
+
     if (!mounted) return;
 
     if (sId == null || name == null || name.isEmpty) {
@@ -70,9 +93,78 @@ class _BootstrapState extends State<_Bootstrap> {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    final cs = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              ui.Color.fromARGB(255, 255, 255, 255),
+              Color(0xFFFFFFFF),
+            ],
+          ),
+        ),
+        child: Center(
+          child: FadeTransition(
+            opacity: CurvedAnimation(parent: _ac, curve: Curves.easeOut),
+            child: ScaleTransition(
+              scale: Tween<double>(begin: 0.98, end: 1.0).animate(
+                CurvedAnimation(parent: _ac, curve: Curves.easeOutBack),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: Image.asset(
+                      'assets/images/logo.png',
+                      width: 140,
+                      height: 140,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          const Icon(Icons.image, size: 120),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    '매아리',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      color: cs.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    '매일 아이 이해하기',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF7DCFB6),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    // 로딩바?
+                    // child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
+
 
 /* ===========================================================
  * 등록 페이지
